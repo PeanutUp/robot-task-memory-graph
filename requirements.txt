@@ -1,0 +1,5 @@
+networkx>=3.3
+streamlit>=1.56
+matplotlib>=3.9
+pandas>=2.2
+pytest>=7.4

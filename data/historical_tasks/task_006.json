@@ -1,0 +1,45 @@
+{
+  "task_id": "task_006",
+  "title": "Throw paper into trash bin",
+  "goal": "throw crumpled paper into the trash bin",
+  "category": "cleanup",
+  "tags": ["throw", "paper", "trash", "bin", "cleanup"],
+  "metadata": {
+    "object_label": "crumpled paper",
+    "target_label": "trash bin",
+    "object_family": "waste",
+    "target_family": "trash_bin",
+    "relation": "into"
+  },
+  "scene": {
+    "grid_size": [6, 5],
+    "robot_start": [0, 0],
+    "object_start": [2, 1],
+    "target": [5, 4],
+    "obstacles": [[3, 2]]
+  },
+  "nodes": [
+    {"id": "start", "type": "state", "role": "start", "label": "task start", "template": "start task"},
+    {"id": "object", "type": "object", "role": "object", "label": "crumpled paper"},
+    {"id": "target", "type": "location", "role": "target", "label": "trash bin"},
+    {"id": "detect", "type": "subtask", "role": "detect", "label": "detect paper", "template": "detect {object}"},
+    {"id": "move_to_object", "type": "action", "role": "move_to_object", "label": "move to paper", "template": "move to {object}"},
+    {"id": "pick", "type": "action", "role": "pick", "label": "pick up paper", "template": "pick up {object}"},
+    {"id": "in_hand", "type": "state", "role": "in_hand", "label": "paper in hand", "template": "{object} in hand"},
+    {"id": "move_to_target", "type": "action", "role": "move_to_target", "label": "move to trash bin", "template": "move to {target}"},
+    {"id": "place", "type": "action", "role": "place", "label": "drop paper into trash bin", "template": "drop {object} into {target}"},
+    {"id": "success", "type": "result", "role": "success", "label": "success", "template": "success"}
+  ],
+  "edges": [
+    {"source": "object", "target": "detect", "type": "object_to_subtask", "cost": 1},
+    {"source": "target", "target": "place", "type": "spatial", "cost": 1},
+    {"source": "start", "target": "detect", "type": "temporal", "cost": 1},
+    {"source": "detect", "target": "move_to_object", "type": "temporal", "cost": 1},
+    {"source": "move_to_object", "target": "pick", "type": "reachable", "cost": 3},
+    {"source": "pick", "target": "in_hand", "type": "causal", "cost": 1},
+    {"source": "in_hand", "target": "move_to_target", "type": "temporal", "cost": 1},
+    {"source": "move_to_target", "target": "place", "type": "reachable", "cost": 3},
+    {"source": "place", "target": "success", "type": "causal", "cost": 1}
+  ]
+}
+

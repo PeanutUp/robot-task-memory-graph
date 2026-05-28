@@ -1,0 +1,49 @@
+{
+  "task_id": "task_011",
+  "title": "Search missing key then return to drawer",
+  "goal": "search for a missing key and put it into the drawer",
+  "category": "failure_recovery",
+  "tags": ["key", "drawer", "missing", "search", "return"],
+  "metadata": {
+    "object_label": "key",
+    "target_label": "drawer",
+    "object_family": "small_tool",
+    "target_family": "drawer",
+    "relation": "into"
+  },
+  "scene": {
+    "grid_size": [6, 5],
+    "robot_start": [0, 2],
+    "object_start": [4, 4],
+    "target": [5, 0],
+    "obstacles": [[2, 2]]
+  },
+  "nodes": [
+    {"id": "start", "type": "state", "role": "start", "label": "task start", "template": "start task"},
+    {"id": "object", "type": "object", "role": "object", "label": "key"},
+    {"id": "target", "type": "location", "role": "target", "label": "drawer"},
+    {"id": "object_missing", "type": "state", "role": "object_missing", "label": "object missing", "template": "{object} missing"},
+    {"id": "search", "type": "subtask", "role": "search", "label": "search key", "template": "search for {object}"},
+    {"id": "detect", "type": "subtask", "role": "detect", "label": "detect key", "template": "detect {object}"},
+    {"id": "move_to_object", "type": "action", "role": "move_to_object", "label": "move to key", "template": "move to {object}"},
+    {"id": "pick", "type": "action", "role": "pick", "label": "pick key", "template": "pick {object}"},
+    {"id": "in_hand", "type": "state", "role": "in_hand", "label": "key in hand", "template": "{object} in hand"},
+    {"id": "move_to_target", "type": "action", "role": "move_to_target", "label": "move to drawer", "template": "move to {target}"},
+    {"id": "place", "type": "action", "role": "place", "label": "place key into drawer", "template": "place {object} into {target}"},
+    {"id": "success", "type": "result", "role": "success", "label": "success", "template": "success"}
+  ],
+  "edges": [
+    {"source": "object", "target": "detect", "type": "object_to_subtask", "cost": 1},
+    {"source": "target", "target": "place", "type": "spatial", "cost": 1},
+    {"source": "start", "target": "object_missing", "type": "causal", "cost": 5},
+    {"source": "object_missing", "target": "search", "type": "temporal", "cost": 3},
+    {"source": "search", "target": "detect", "type": "temporal", "cost": 2},
+    {"source": "detect", "target": "move_to_object", "type": "temporal", "cost": 1},
+    {"source": "move_to_object", "target": "pick", "type": "reachable", "cost": 3},
+    {"source": "pick", "target": "in_hand", "type": "causal", "cost": 1},
+    {"source": "in_hand", "target": "move_to_target", "type": "temporal", "cost": 1},
+    {"source": "move_to_target", "target": "place", "type": "reachable", "cost": 3},
+    {"source": "place", "target": "success", "type": "causal", "cost": 1}
+  ]
+}
+

@@ -1,0 +1,49 @@
+{
+  "task_id": "task_010",
+  "title": "Reroute around blocked path to medicine box",
+  "goal": "move a medicine bottle into a box after the direct path is blocked",
+  "category": "failure_recovery",
+  "tags": ["medicine", "box", "blocked", "reroute", "container"],
+  "metadata": {
+    "object_label": "medicine bottle",
+    "target_label": "medicine box",
+    "object_family": "bottle",
+    "target_family": "box",
+    "relation": "into"
+  },
+  "scene": {
+    "grid_size": [6, 5],
+    "robot_start": [0, 2],
+    "object_start": [1, 1],
+    "target": [5, 2],
+    "obstacles": [[3, 2], [3, 1], [3, 3]]
+  },
+  "nodes": [
+    {"id": "start", "type": "state", "role": "start", "label": "task start", "template": "start task"},
+    {"id": "object", "type": "object", "role": "object", "label": "medicine bottle"},
+    {"id": "target", "type": "location", "role": "target", "label": "medicine box"},
+    {"id": "detect", "type": "subtask", "role": "detect", "label": "detect medicine bottle", "template": "detect {object}"},
+    {"id": "move_to_object", "type": "action", "role": "move_to_object", "label": "move to medicine bottle", "template": "move to {object}"},
+    {"id": "pick", "type": "action", "role": "pick", "label": "pick medicine bottle", "template": "pick {object}"},
+    {"id": "in_hand", "type": "state", "role": "in_hand", "label": "medicine bottle in hand", "template": "{object} in hand"},
+    {"id": "move_to_target", "type": "action", "role": "move_to_target", "label": "move to medicine box", "template": "move to {target}"},
+    {"id": "path_blocked", "type": "state", "role": "path_blocked", "label": "path blocked", "template": "path blocked"},
+    {"id": "reroute", "type": "action", "role": "reroute", "label": "reroute path", "template": "reroute around obstacle"},
+    {"id": "place", "type": "action", "role": "place", "label": "place medicine bottle into box", "template": "place {object} into {target}"},
+    {"id": "success", "type": "result", "role": "success", "label": "success", "template": "success"}
+  ],
+  "edges": [
+    {"source": "object", "target": "detect", "type": "object_to_subtask", "cost": 1},
+    {"source": "target", "target": "place", "type": "spatial", "cost": 1},
+    {"source": "start", "target": "detect", "type": "temporal", "cost": 1},
+    {"source": "detect", "target": "move_to_object", "type": "temporal", "cost": 1},
+    {"source": "move_to_object", "target": "pick", "type": "reachable", "cost": 3},
+    {"source": "pick", "target": "in_hand", "type": "causal", "cost": 1},
+    {"source": "in_hand", "target": "move_to_target", "type": "temporal", "cost": 1},
+    {"source": "move_to_target", "target": "path_blocked", "type": "causal", "cost": 5},
+    {"source": "path_blocked", "target": "reroute", "type": "temporal", "cost": 5},
+    {"source": "reroute", "target": "place", "type": "reachable", "cost": 3},
+    {"source": "place", "target": "success", "type": "causal", "cost": 1}
+  ]
+}
+

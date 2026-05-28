@@ -1,0 +1,49 @@
+{
+  "task_id": "task_009",
+  "title": "Recover from eraser grasp failure",
+  "goal": "pick an eraser, recover from grasp failure, and put it into the small tray",
+  "category": "failure_recovery",
+  "tags": ["eraser", "tray", "grasp", "retry", "failure", "desktop"],
+  "metadata": {
+    "object_label": "eraser",
+    "target_label": "small tray",
+    "object_family": "stationery",
+    "target_family": "tray",
+    "relation": "into"
+  },
+  "scene": {
+    "grid_size": [6, 5],
+    "robot_start": [0, 0],
+    "object_start": [2, 4],
+    "target": [5, 2],
+    "obstacles": [[3, 3]]
+  },
+  "nodes": [
+    {"id": "start", "type": "state", "role": "start", "label": "task start", "template": "start task"},
+    {"id": "object", "type": "object", "role": "object", "label": "eraser"},
+    {"id": "target", "type": "location", "role": "target", "label": "small tray"},
+    {"id": "detect", "type": "subtask", "role": "detect", "label": "detect eraser", "template": "detect {object}"},
+    {"id": "move_to_object", "type": "action", "role": "move_to_object", "label": "move to eraser", "template": "move to {object}"},
+    {"id": "pick", "type": "action", "role": "pick", "label": "pick eraser", "template": "pick {object}"},
+    {"id": "grasp_failed", "type": "state", "role": "grasp_failed", "label": "grasp failed", "template": "grasp failed"},
+    {"id": "retry_pick", "type": "action", "role": "retry_pick", "label": "retry pick", "template": "retry pick {object}"},
+    {"id": "in_hand", "type": "state", "role": "in_hand", "label": "eraser in hand", "template": "{object} in hand"},
+    {"id": "move_to_target", "type": "action", "role": "move_to_target", "label": "move to tray", "template": "move to {target}"},
+    {"id": "place", "type": "action", "role": "place", "label": "place eraser into tray", "template": "place {object} into {target}"},
+    {"id": "success", "type": "result", "role": "success", "label": "success", "template": "success"}
+  ],
+  "edges": [
+    {"source": "object", "target": "detect", "type": "object_to_subtask", "cost": 1},
+    {"source": "target", "target": "place", "type": "spatial", "cost": 1},
+    {"source": "start", "target": "detect", "type": "temporal", "cost": 1},
+    {"source": "detect", "target": "move_to_object", "type": "temporal", "cost": 1},
+    {"source": "move_to_object", "target": "pick", "type": "reachable", "cost": 3},
+    {"source": "pick", "target": "grasp_failed", "type": "causal", "cost": 5},
+    {"source": "grasp_failed", "target": "retry_pick", "type": "temporal", "cost": 5},
+    {"source": "retry_pick", "target": "in_hand", "type": "causal", "cost": 1},
+    {"source": "in_hand", "target": "move_to_target", "type": "temporal", "cost": 1},
+    {"source": "move_to_target", "target": "place", "type": "reachable", "cost": 3},
+    {"source": "place", "target": "success", "type": "causal", "cost": 1}
+  ]
+}
+

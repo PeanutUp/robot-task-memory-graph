@@ -1,0 +1,45 @@
+{
+  "task_id": "task_003",
+  "title": "Move toy into toy basket",
+  "goal": "move a toy into the toy basket",
+  "category": "pick_place",
+  "tags": ["move", "toy", "basket", "container", "desktop"],
+  "metadata": {
+    "object_label": "toy",
+    "target_label": "toy basket",
+    "object_family": "toy",
+    "target_family": "basket",
+    "relation": "into"
+  },
+  "scene": {
+    "grid_size": [6, 5],
+    "robot_start": [0, 4],
+    "object_start": [2, 2],
+    "target": [5, 4],
+    "obstacles": [[3, 3]]
+  },
+  "nodes": [
+    {"id": "start", "type": "state", "role": "start", "label": "task start", "template": "start task"},
+    {"id": "object", "type": "object", "role": "object", "label": "toy"},
+    {"id": "target", "type": "location", "role": "target", "label": "toy basket"},
+    {"id": "detect", "type": "subtask", "role": "detect", "label": "detect toy", "template": "detect {object}"},
+    {"id": "move_to_object", "type": "action", "role": "move_to_object", "label": "move to toy", "template": "move to {object}"},
+    {"id": "pick", "type": "action", "role": "pick", "label": "pick toy", "template": "pick {object}"},
+    {"id": "in_hand", "type": "state", "role": "in_hand", "label": "toy in hand", "template": "{object} in hand"},
+    {"id": "move_to_target", "type": "action", "role": "move_to_target", "label": "move to toy basket", "template": "move to {target}"},
+    {"id": "place", "type": "action", "role": "place", "label": "place toy into basket", "template": "place {object} into {target}"},
+    {"id": "success", "type": "result", "role": "success", "label": "success", "template": "success"}
+  ],
+  "edges": [
+    {"source": "object", "target": "detect", "type": "object_to_subtask", "cost": 1},
+    {"source": "target", "target": "place", "type": "spatial", "cost": 1},
+    {"source": "start", "target": "detect", "type": "temporal", "cost": 1},
+    {"source": "detect", "target": "move_to_object", "type": "temporal", "cost": 1},
+    {"source": "move_to_object", "target": "pick", "type": "reachable", "cost": 3},
+    {"source": "pick", "target": "in_hand", "type": "causal", "cost": 1},
+    {"source": "in_hand", "target": "move_to_target", "type": "temporal", "cost": 1},
+    {"source": "move_to_target", "target": "place", "type": "reachable", "cost": 3},
+    {"source": "place", "target": "success", "type": "causal", "cost": 1}
+  ]
+}
+
