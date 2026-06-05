@@ -44,34 +44,40 @@ def reset_step_if_needed(query_id: str) -> None:
 
 def main() -> None:
     st.set_page_config(
-        page_title="Robot Task Memory Graph",
-        page_icon="RT",
+        page_title="Robot Task Memory",
+        page_icon="🤖",
         layout="wide",
+        initial_sidebar_state="expanded"
     )
 
     historical_tasks, query_tasks = load_project_data()
 
-    st.title("机器人任务记忆图：长期任务经验复用")
-    st.caption("Directed graph modeling + graph similarity + subgraph matching + shortest path planning")
+    # --- Header ---
+    st.title("🤖 机器人任务记忆图：长期任务经验复用")
+    st.markdown("基于 **有向图建模**、**规划感知 WL 图核检索** 与 **最短路径复用** 的机器人任务记忆系统。")
 
+    # --- Sidebar ---
     with st.sidebar:
-        st.header("Demo 控制台")
+        st.header("🎮 Demo 控制台")
+        st.markdown("选择一个新任务，观察系统如何检索历史任务图并复用成功路径。")
         query_options = {task["title"]: task for task in query_tasks}
-        selected_title = st.selectbox("选择新任务", list(query_options.keys()))
-        include_ged = st.checkbox("加入 Graph Edit Distance 指标", value=False)
+        selected_title = st.selectbox("🎯 选择新查询任务", list(query_options.keys()))
+        
         st.divider()
-        st.write("经验库规模")
-        st.metric("历史任务图", len(historical_tasks))
-        st.metric("查询任务", len(query_tasks))
+        st.markdown("📊 **领域经验库规模**")
+        metric_col1, metric_col2 = st.columns(2)
+        metric_col1.metric("历史经验", len(historical_tasks))
+        metric_col2.metric("测试用例", len(query_tasks))
 
     query_task = query_options[selected_title]
     reset_step_if_needed(query_task["task_id"])
 
+    # Compute matches
     rankings = rank_tasks(
         query_task,
         historical_tasks,
         top_k=5,
-        include_ged=include_ged,
+        include_ged=True,  # 默认开启 GED (Graph Edit Distance)
     )
     best = rankings[0]
     best_graph = best["graph"]
@@ -82,92 +88,115 @@ def main() -> None:
 
     max_step = max(0, len(frames) - 1)
     st.session_state["step_index"] = min(st.session_state.get("step_index", 0), max_step)
-
-    top_left, top_right = st.columns([1.15, 1])
-    with top_left:
-        st.subheader("检索结果")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("最相似历史任务", best["task"]["task_id"])
-        c2.metric("相似度", f"{best['score']:.3f}")
-        c3.metric("规划总代价", f"{plan['cost']:.1f}")
-        st.write(f"**匹配任务：** {best['task']['title']}")
-        st.write(f"**可复用结构：** {match['structure'] if match['found'] else '未找到完整核心子图'}")
-
-    with top_right:
-        st.subheader("推荐规划路径")
-        for step in plan["steps"]:
-            st.write(f"{step['index'] + 1}. {step['label']}")
-
-    rank_rows = []
-    for index, item in enumerate(rankings, start=1):
-        row = {
-            "rank": index,
-            "task_id": item["task"]["task_id"],
-            "title": item["task"]["title"],
-            "score": item["score"],
-            "semantic": item["breakdown"]["semantic"],
-            "edge_type": item["breakdown"]["edge_type"],
-        }
-        if include_ged:
-            row["graph_edit"] = item["breakdown"]["graph_edit"]
-        rank_rows.append(row)
-    st.dataframe(pd.DataFrame(rank_rows), width="stretch", hide_index=True)
-
-    st.divider()
-
-    control_a, control_b, control_c, control_d = st.columns([1, 1, 1, 5])
-    with control_a:
-        if st.button("上一步", width="stretch"):
-            st.session_state["step_index"] = max(0, st.session_state["step_index"] - 1)
-    with control_b:
-        if st.button("下一步", type="primary", width="stretch"):
-            st.session_state["step_index"] = min(max_step, st.session_state["step_index"] + 1)
-    with control_c:
-        if st.button("重置", width="stretch"):
-            st.session_state["step_index"] = 0
-    with control_d:
-        st.session_state["step_index"] = st.slider(
-            "执行步骤",
-            min_value=0,
-            max_value=max_step,
-            value=st.session_state["step_index"],
-            format="%d",
-        )
-
     frame = frames[st.session_state["step_index"]]
     completed_nodes, completed_edges = completed_highlights(plan, frame["active_node"])
 
-    left, right = st.columns([1, 1.25])
-    with left:
-        st.subheader("桌面执行动画")
-        st.pyplot(draw_execution_frame(frame), clear_figure=True)
-        st.info(f"当前动作：{frame['action']}")
+    # --- Main Content UI ---
+    tab1, tab2 = st.tabs(["🕹️ 执行可视化", "📑 检索与分析面板"])
 
-    with right:
-        st.subheader("任务图同步高亮")
-        st.pyplot(
-            draw_task_graph(
-                best_graph,
-                highlighted_nodes=completed_nodes,
-                highlighted_edges=completed_edges,
-                matched_nodes=match["matched_nodes"],
-                active_node=frame["active_node"],
-                title=best["task"]["title"],
-            ),
-            clear_figure=True,
-        )
+    with tab1:
+        st.subheader(f"当前执行阶段：**{best['task']['title']}**")
+        
+        # UI controls wrapped nicely
+        ctrl_col1, ctrl_col2, ctrl_col3, ctrl_col4 = st.columns([1, 1, 1, 4])
+        with ctrl_col1:
+            if st.button("⏪ 上一步", width="stretch"):
+                st.session_state["step_index"] = max(0, st.session_state["step_index"] - 1)
+        with ctrl_col2:
+            if st.button("⏩ 下一步", type="primary", width="stretch"):
+                st.session_state["step_index"] = min(max_step, st.session_state["step_index"] + 1)
+        with ctrl_col3:
+            if st.button("🔄 重置", width="stretch"):
+                st.session_state["step_index"] = 0
+        with ctrl_col4:
+            st.session_state["step_index"] = st.slider(
+                "播放进度",
+                min_value=0,
+                max_value=max_step,
+                value=st.session_state["step_index"],
+                format="步骤 %d",
+                label_visibility="collapsed"
+            )
 
-    with st.expander("图论方法说明"):
+        # Plotly side by side
+        plot_col1, plot_col2 = st.columns([1, 1.25])
+        with plot_col1:
+            st.markdown(f"#### 📺 场景映射动画  \n👉 **动作**: `{frame['action']}`")
+            with st.container(border=True):
+                st.pyplot(draw_execution_frame(frame), clear_figure=True)
+                
+        with plot_col2:
+            st.markdown("#### 🧠 知识图谱激活态")
+            with st.container(border=True):
+                st.pyplot(
+                    draw_task_graph(
+                        best_graph,
+                        highlighted_nodes=completed_nodes,
+                        highlighted_edges=completed_edges,
+                        matched_nodes=match["matched_nodes"],
+                        active_node=frame["active_node"],
+                        title="Inference graph",
+                    ),
+                    clear_figure=True,
+                )
+
+    with tab2:
+        st.subheader("💡 检索细节分析")
+        
+        m_c1, m_c2, m_c3, m_c4 = st.columns(4)
+        m_c1.metric("📌 最佳匹配任务 ID", best["task"]["task_id"])
+        m_c2.metric("🌟 综合检索分数", f"{best['score']:.3f}")
+        m_c3.metric("🛣️ 最短路径代价", f"{plan['cost']:.1f}")
+        m_c4.metric("⚙️ 子图同构度", f"{len(match['matched_nodes'])} Node(s)")
+
+        st.markdown(f"**核心复用结构：** `{match['structure'] if match['found'] else '尚未找到具有完整特征的核心子结构'}`")
+        
+        with st.expander("📍 推荐路径细节", expanded=True):
+            for step in plan["steps"]:
+                st.markdown(f"- 🟢 **Step {step['index'] + 1}**: {step['label']}")
+
+        st.markdown("#### 🏆 历史记忆召回排行")
+        rank_rows = []
+        for index, item in enumerate(rankings, start=1):
+            row = {
+                "排名": f"Top {index}",
+                "历史任务 ID": item["task"]["task_id"],
+                "任务描述": item["task"]["title"],
+                "学习检索分数": f"{item['score']:.4f}",
+                "手工融合对照": f"{item['breakdown']['fusion_score']:.4f}",
+                "WL图核": f"{item['breakdown']['wl_kernel']:.4f}",
+                "TF-IDF语义": f"{item['breakdown']['semantic_cosine']:.4f}",
+                "边类型重合": f"{item['breakdown']['edge_type']:.4f}",
+                "GED": f"{item['breakdown']['graph_edit']:.4f}"
+            }
+            rank_rows.append(row)
+        st.dataframe(pd.DataFrame(rank_rows), width="stretch", hide_index=True)
+
+        with st.expander("🧮 学到的检索权重"):
+            training_pairs = best["breakdown"]["training_pairs"]
+            st.write(
+                f"训练样本来自历史任务两两配对：正样本 {training_pairs['positive']}，"
+                f"负样本 {training_pairs['negative']}。"
+            )
+            weights = best["breakdown"]["learned_weights"]
+            weight_rows = [
+                {"特征": name, "学习权重": value}
+                for name, value in sorted(weights.items(), key=lambda item: item[1], reverse=True)
+            ]
+            st.dataframe(pd.DataFrame(weight_rows), width="stretch", hide_index=True)
+
+    with st.expander("ℹ️ 系统底层逻辑说明"):
         st.markdown(
             """
-            - **有向图建模**：节点表示物体、地点、动作、状态和结果，边表示时序、因果、空间和可达关系。
-            - **图相似度检索**：综合节点类型、节点角色、边类型、语义标签和任务类别计算相似度。
-            - **子图匹配**：用 VF2 在历史任务图中查找可复用的核心结构。
-            - **最短路径规划**：用 Dijkstra 从 `start` 到 `success` 找低代价成功路径。
-            - **执行可视化**：把规划路径映射到离散桌面网格，同步高亮机器人当前执行步骤。
+            - **有向图建模**：将动作抽象为节点(物体、地点、状态)，边表示时序、空间、因果关系。
+            - **规划感知 WL 图核**：重点编码从 start 到 success 的低代价成功路径，并保留完整图结构作为辅助特征。
+            - **弱监督学习排序器**：从历史任务两两配对中学习特征权重，预测某个历史任务是否值得复用。
+            - **TF-IDF + Cosine 检索**：把任务目标、物体、地点、类别等文本字段转为向量，作为学习排序器的输入特征。
+            - **子图匹配 (VF2)**：精准抽取可直接复用的历史动作序列逻辑。
+            - **Dijkstra 路径复用**：在历史任务图中提取从 start 到 success 的最低代价成功路径。
+            - **降维可视化**：将图谱推演映射回二维桌面的空间执行过程。
             """
         )
-
 
 if __name__ == "__main__":
     main()

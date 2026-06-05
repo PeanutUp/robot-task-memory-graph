@@ -148,35 +148,120 @@ def draw_execution_frame(frame: dict[str, Any]) -> plt.Figure:
     object_x, object_y = frame["object_pos"]
     target_x, target_y = frame["target_pos"]
 
-    fig, ax = plt.subplots(figsize=(5.6, 4.7))
+    fig, ax = plt.subplots(figsize=(6.5, 5))
+    ax.set_facecolor("#F8F9FA")
+    fig.patch.set_facecolor("#F8F9FA")
+    
     ax.set_xlim(-0.5, width - 0.5)
     ax.set_ylim(height - 0.5, -0.5)
-    ax.set_xticks(range(width))
-    ax.set_yticks(range(height))
-    ax.grid(True, color="#D0D7DE", linewidth=1.0)
+    
+    # Remove standard grid and axes for a cleaner look
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
     ax.set_aspect("equal")
-    ax.set_title(frame["message"], fontsize=12, pad=10)
+    
+    # Title showing the current message
+    ax.set_title(frame["message"], fontsize=13, pad=15, weight="bold", color="#343A40", loc="left")
 
+    # Draw rounded tiles instead of grid lines
+    from matplotlib.patches import FancyBboxPatch, Wedge, Polygon
+    for x in range(width):
+        for y in range(height):
+            # Checkerboard styling
+            color = "#E9ECEF" if (x + y) % 2 == 0 else "#DEE2E6"
+            tile = FancyBboxPatch(
+                (x - 0.45, y - 0.45), 0.9, 0.9,
+                boxstyle="round,pad=0.02,rounding_size=0.15",
+                ec="none", fc=color, zorder=0
+            )
+            ax.add_patch(tile)
+
+    # Draw obstacles (boxes)
     for x, y in frame.get("obstacles", []):
-        ax.add_patch(Rectangle((x - 0.45, y - 0.45), 0.9, 0.9, color="#ADB5BD"))
-        ax.text(x, y, "X", ha="center", va="center", fontsize=12, weight="bold", color="#343A40")
+        base = FancyBboxPatch(
+            (x - 0.4, y - 0.4), 0.8, 0.8,
+            boxstyle="round,pad=0.0,rounding_size=0.1",
+            ec="#495057", fc="#6C757D", lw=1.5, zorder=1
+        )
+        ax.add_patch(base)
+        ax.plot([x - 0.4, x + 0.4], [y - 0.4, y + 0.4], color="#495057", lw=1.5, zorder=1)
+        ax.plot([x - 0.4, x + 0.4], [y + 0.4, y - 0.4], color="#495057", lw=1.5, zorder=1)
 
-    ax.add_patch(Rectangle((target_x - 0.42, target_y - 0.42), 0.84, 0.84, color="#95D5B2", alpha=0.8))
-    ax.text(target_x, target_y + 0.33, "TARGET", ha="center", va="center", fontsize=8, weight="bold")
+    # Draw target zone (Goal area)
+    zone = FancyBboxPatch(
+        (target_x - 0.42, target_y - 0.42), 0.84, 0.84,
+        boxstyle="round,pad=0.0,rounding_size=0.2",
+        ec="#2B8A3E", fc="#D3F9D8", lw=2.5, linestyle="--", zorder=1
+    )
+    ax.add_patch(zone)
+    ax.text(target_x, target_y, "TARGET\nZONE", ha="center", va="center", fontsize=9, weight="bold", color="#2B8A3E", zorder=2)
 
+    # Draw the object if it's not carried
     if not frame["carrying"]:
-        ax.add_patch(Circle((object_x, object_y), 0.28, color="#FFD166"))
-        ax.text(object_x, object_y, "OBJ", ha="center", va="center", fontsize=8, weight="bold")
+        # Draw a little package
+        obj_base = FancyBboxPatch(
+            (object_x - 0.25, object_y - 0.25), 0.5, 0.5,
+            boxstyle="round,pad=0.0,rounding_size=0.05",
+            ec="#E67700", fc="#FCC419", lw=2, zorder=3
+        )
+        ax.add_patch(obj_base)
+        # Add a bow/tape line to logic object
+        ax.plot([object_x - 0.25, object_x + 0.25], [object_y, object_y], color="#E67700", lw=2, zorder=3)
+        ax.plot([object_x, object_x], [object_y - 0.25, object_y + 0.25], color="#E67700", lw=2, zorder=3)
 
-    ax.add_patch(Circle((robot_x, robot_y), 0.34, color="#4D96FF"))
-    ax.text(robot_x, robot_y, "BOT", ha="center", va="center", fontsize=8, weight="bold", color="white")
+    # Draw the Robot
+    # Shadow
+    ax.add_patch(Circle((robot_x, robot_y + 0.3), 0.3, fc='black', alpha=0.15, zorder=4))
+    
+    # Tracks / Wheels
+    t_left = FancyBboxPatch((robot_x - 0.35, robot_y - 0.15), 0.15, 0.4, boxstyle="round,pad=0,rounding_size=0.1", fc="#212529", zorder=5)
+    t_right = FancyBboxPatch((robot_x + 0.2, robot_y - 0.15), 0.15, 0.4, boxstyle="round,pad=0,rounding_size=0.1", fc="#212529", zorder=5)
+    ax.add_patch(t_left)
+    ax.add_patch(t_right)
+
+    # Main Body
+    body = FancyBboxPatch(
+        (robot_x - 0.3, robot_y - 0.25), 0.6, 0.55,
+        boxstyle="round,pad=0.0,rounding_size=0.1",
+        ec="#1864AB", fc="#339AF0", lw=2, zorder=6
+    )
+    ax.add_patch(body)
+
+    # Head / Screen
+    screen = FancyBboxPatch(
+        (robot_x - 0.2, robot_y - 0.15), 0.4, 0.25,
+        boxstyle="round,pad=0.0,rounding_size=0.05",
+        ec="#1864AB", fc="#E3FAFC", lw=1.5, zorder=7
+    )
+    ax.add_patch(screen)
+
+    # Eyes (Cute robot eyes)
+    ax.add_patch(Circle((robot_x - 0.08, robot_y - 0.05), 0.04, color="#1864AB", zorder=8))
+    ax.add_patch(Circle((robot_x + 0.08, robot_y - 0.05), 0.04, color="#1864AB", zorder=8))
+    
+    # Antenna
+    ax.plot([robot_x, robot_x], [robot_y - 0.25, robot_y - 0.4], color="#1864AB", lw=2, zorder=5)
+    ax.add_patch(Circle((robot_x, robot_y - 0.42), 0.06, color="#FA5252", zorder=6))
 
     if frame["carrying"]:
-        ax.add_patch(Circle((robot_x + 0.28, robot_y - 0.28), 0.18, color="#FFD166"))
-        ax.text(robot_x + 0.28, robot_y - 0.28, "OBJ", ha="center", va="center", fontsize=6, weight="bold")
+        # Draw the object being carried above the robot
+        carry_y = robot_y - 0.45
+        obj_base = FancyBboxPatch(
+            (robot_x - 0.15, carry_y - 0.15), 0.3, 0.3,
+            boxstyle="round,pad=0.0,rounding_size=0.05",
+            ec="#E67700", fc="#FCC419", lw=1.5, zorder=9
+        )
+        ax.add_patch(obj_base)
+        ax.plot([robot_x - 0.15, robot_x + 0.15], [carry_y, carry_y], color="#E67700", lw=1.5, zorder=9)
+        ax.plot([robot_x, robot_x], [carry_y - 0.15, carry_y + 0.15], color="#E67700", lw=1.5, zorder=9)
 
-    ax.set_xlabel(f"Object: {frame['object_label']}    Target: {frame['target_label']}")
-    ax.tick_params(labelsize=8)
+    # Legend text conceptually
+    ax.text(0.5, -0.05, f"Object: {frame['object_label']}    |    Target: {frame['target_label']}",
+            transform=ax.transAxes, ha="center", va="top", fontsize=11, color="#495057", weight="bold")
+
     fig.tight_layout()
     return fig
-

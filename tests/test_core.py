@@ -3,8 +3,15 @@ from pathlib import Path
 from src.graph_builder import build_task_graph, load_tasks
 from src.graph_matcher import find_reusable_subgraph
 from src.graph_similarity import rank_tasks
+from src.memory_learning import (
+    MemoryRetrievalModel,
+    build_task_views,
+    evaluate_memory_system,
+    sample_training_pairs,
+)
 from src.planner import generate_plan, shortest_success_path
 from src.simulator import build_execution_frames
+from src.synthetic_tasks import generate_synthetic_tasks
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,6 +42,10 @@ def test_block_query_prefers_book_box_memory() -> None:
 
     assert rankings[0]["task"]["task_id"] == "task_001"
     assert rankings[0]["score"] > rankings[1]["score"]
+    assert rankings[0]["breakdown"]["algorithm"] == "weakly_supervised_logistic_ranker"
+    assert rankings[0]["breakdown"]["wl_kernel"] > 0
+    assert rankings[0]["breakdown"]["semantic_cosine"] > 0
+    assert rankings[0]["breakdown"]["learned_score"] > 0
 
 
 def test_subgraph_matching_finds_reusable_structure() -> None:
@@ -74,3 +85,18 @@ def test_simulation_places_object_at_target() -> None:
     assert frames[-1]["object_pos"] == frames[-1]["target_pos"]
     assert frames[-1]["carrying"] is False
 
+
+def test_learned_memory_model_beats_no_memory_on_synthetic_rollouts() -> None:
+    memory_tasks = generate_synthetic_tasks(80, seed=101, prefix="memory_test")
+    train_queries = generate_synthetic_tasks(40, seed=102, prefix="train_test")
+    eval_tasks = generate_synthetic_tasks(25, seed=103, prefix="eval_test")
+
+    memory_views = build_task_views(memory_tasks)
+    train_views = build_task_views(train_queries)
+    eval_views = build_task_views(eval_tasks)
+    x_train, y_train = sample_training_pairs(train_views, memory_views, 240, seed=104)
+    model = MemoryRetrievalModel().fit(x_train, y_train)
+    result = evaluate_memory_system(eval_views, memory_views, model, rollouts=20, seed=105)
+
+    assert model.training_report["train_auc"] >= 0.9
+    assert result["graph_memory_success_rate"] > result["baseline_success_rate"]
