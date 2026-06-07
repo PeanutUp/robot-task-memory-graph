@@ -1,0 +1,304 @@
+{
+  "task": {
+    "task_id": "test_00000",
+    "split": "test",
+    "split_seed": 1320000,
+    "object_name": "cup",
+    "object_family": "vessel",
+    "target_name": "cabinet",
+    "target_family": "storage",
+    "risk_type": "special",
+    "handling_action": "secure_lid",
+    "required_key": false,
+    "door_state": "none",
+    "obstacle_state": "blocked",
+    "object_location": "object_area",
+    "target_location": "target_area"
+  },
+  "baseline_success": true,
+  "memory_success": true,
+  "baseline_frames": [
+    {
+      "step": 0,
+      "state": {
+        "location": "start",
+        "has_key": false,
+        "door_open": true,
+        "obstacle_cleared": false,
+        "object_checked": true,
+        "cart_ready": true,
+        "lid_secured": false,
+        "object_in_hand": false,
+        "delivered": false
+      },
+      "predicted_action": "clear_obstacle",
+      "success": false,
+      "failed": false,
+      "message": "ok",
+      "top_memory_match": null,
+      "top_memory_similarity": 0.0
+    },
+    {
+      "step": 1,
+      "state": {
+        "location": "start",
+        "has_key": false,
+        "door_open": true,
+        "obstacle_cleared": true,
+        "object_checked": true,
+        "cart_ready": true,
+        "lid_secured": false,
+        "object_in_hand": false,
+        "delivered": false
+      },
+      "predicted_action": "move_to_object",
+      "success": false,
+      "failed": false,
+      "message": "ok",
+      "top_memory_match": null,
+      "top_memory_similarity": 0.0
+    },
+    {
+      "step": 2,
+      "state": {
+        "location": "object_area",
+        "has_key": false,
+        "door_open": true,
+        "obstacle_cleared": true,
+        "object_checked": true,
+        "cart_ready": true,
+        "lid_secured": false,
+        "object_in_hand": false,
+        "delivered": false
+      },
+      "predicted_action": "secure_lid",
+      "success": false,
+      "failed": false,
+      "message": "ok",
+      "top_memory_match": null,
+      "top_memory_similarity": 0.0
+    },
+    {
+      "step": 3,
+      "state": {
+        "location": "object_area",
+        "has_key": false,
+        "door_open": true,
+        "obstacle_cleared": true,
+        "object_checked": true,
+        "cart_ready": true,
+        "lid_secured": true,
+        "object_in_hand": false,
+        "delivered": false
+      },
+      "predicted_action": "pick_object",
+      "success": false,
+      "failed": false,
+      "message": "ok",
+      "top_memory_match": null,
+      "top_memory_similarity": 0.0
+    },
+    {
+      "step": 4,
+      "state": {
+        "location": "object_area",
+        "has_key": false,
+        "door_open": true,
+        "obstacle_cleared": true,
+        "object_checked": true,
+        "cart_ready": true,
+        "lid_secured": true,
+        "object_in_hand": true,
+        "delivered": false
+      },
+      "predicted_action": "move_to_target",
+      "success": false,
+      "failed": false,
+      "message": "ok",
+      "top_memory_match": null,
+      "top_memory_similarity": 0.0
+    },
+    {
+      "step": 5,
+      "state": {
+        "location": "target_area",
+        "has_key": false,
+        "door_open": true,
+        "obstacle_cleared": true,
+        "object_checked": true,
+        "cart_ready": true,
+        "lid_secured": true,
+        "object_in_hand": true,
+        "delivered": false
+      },
+      "predicted_action": "place_object",
+      "success": false,
+      "failed": false,
+      "message": "ok",
+      "top_memory_match": null,
+      "top_memory_similarity": 0.0
+    },
+    {
+      "step": 6,
+      "state": {
+        "location": "target_area",
+        "has_key": false,
+        "door_open": true,
+        "obstacle_cleared": true,
+        "object_checked": true,
+        "cart_ready": true,
+        "lid_secured": true,
+        "object_in_hand": false,
+        "delivered": true
+      },
+      "predicted_action": "stop",
+      "success": true,
+      "failed": false,
+      "message": "success",
+      "top_memory_match": null,
+      "top_memory_similarity": 0.0
+    }
+  ],
+  "memory_frames": [
+    {
+      "step": 0,
+      "state": {
+        "location": "start",
+        "has_key": false,
+        "door_open": true,
+        "obstacle_cleared": false,
+        "object_checked": true,
+        "cart_ready": true,
+        "lid_secured": false,
+        "object_in_hand": false,
+        "delivered": false
+      },
+      "predicted_action": "clear_obstacle",
+      "success": false,
+      "failed": false,
+      "message": "ok",
+      "top_memory_match": "train_00040",
+      "top_memory_similarity": 0.9788235294117649
+    },
+    {
+      "step": 1,
+      "state": {
+        "location": "start",
+        "has_key": false,
+        "door_open": true,
+        "obstacle_cleared": true,
+        "object_checked": true,
+        "cart_ready": true,
+        "lid_secured": false,
+        "object_in_hand": false,
+        "delivered": false
+      },
+      "predicted_action": "move_to_object",
+      "success": false,
+      "failed": false,
+      "message": "ok",
+      "top_memory_match": "train_00040",
+      "top_memory_similarity": 0.9788235294117649
+    },
+    {
+      "step": 2,
+      "state": {
+        "location": "object_area",
+        "has_key": false,
+        "door_open": true,
+        "obstacle_cleared": true,
+        "object_checked": true,
+        "cart_ready": true,
+        "lid_secured": false,
+        "object_in_hand": false,
+        "delivered": false
+      },
+      "predicted_action": "secure_lid",
+      "success": false,
+      "failed": false,
+      "message": "ok",
+      "top_memory_match": "train_00040",
+      "top_memory_similarity": 0.9788235294117649
+    },
+    {
+      "step": 3,
+      "state": {
+        "location": "object_area",
+        "has_key": false,
+        "door_open": true,
+        "obstacle_cleared": true,
+        "object_checked": true,
+        "cart_ready": true,
+        "lid_secured": true,
+        "object_in_hand": false,
+        "delivered": false
+      },
+      "predicted_action": "pick_object",
+      "success": false,
+      "failed": false,
+      "message": "ok",
+      "top_memory_match": "train_00040",
+      "top_memory_similarity": 0.9788235294117649
+    },
+    {
+      "step": 4,
+      "state": {
+        "location": "object_area",
+        "has_key": false,
+        "door_open": true,
+        "obstacle_cleared": true,
+        "object_checked": true,
+        "cart_ready": true,
+        "lid_secured": true,
+        "object_in_hand": true,
+        "delivered": false
+      },
+      "predicted_action": "move_to_target",
+      "success": false,
+      "failed": false,
+      "message": "ok",
+      "top_memory_match": "train_00040",
+      "top_memory_similarity": 0.9788235294117649
+    },
+    {
+      "step": 5,
+      "state": {
+        "location": "target_area",
+        "has_key": false,
+        "door_open": true,
+        "obstacle_cleared": true,
+        "object_checked": true,
+        "cart_ready": true,
+        "lid_secured": true,
+        "object_in_hand": true,
+        "delivered": false
+      },
+      "predicted_action": "place_object",
+      "success": false,
+      "failed": false,
+      "message": "ok",
+      "top_memory_match": "train_00040",
+      "top_memory_similarity": 0.9788235294117649
+    },
+    {
+      "step": 6,
+      "state": {
+        "location": "target_area",
+        "has_key": false,
+        "door_open": true,
+        "obstacle_cleared": true,
+        "object_checked": true,
+        "cart_ready": true,
+        "lid_secured": true,
+        "object_in_hand": false,
+        "delivered": true
+      },
+      "predicted_action": "stop",
+      "success": true,
+      "failed": false,
+      "message": "success",
+      "top_memory_match": null,
+      "top_memory_similarity": 0.0
+    }
+  ]
+}

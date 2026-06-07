@@ -1,102 +1,82 @@
-from pathlib import Path
+import networkx as nx
 
-from src.graph_builder import build_task_graph, load_tasks
-from src.graph_matcher import find_reusable_subgraph
-from src.graph_similarity import rank_tasks
-from src.memory_learning import (
-    MemoryRetrievalModel,
-    build_task_views,
-    evaluate_memory_system,
-    sample_training_pairs,
+from src.task_memory import (
+    ACTION_NAMES,
+    TaskState,
+    build_memory_bank,
+    build_task_graph,
+    evaluate_rollouts,
+    expert_bfs_plan,
+    generate_dataset,
+    memory_feature_size,
+    train_models,
 )
-from src.planner import generate_plan, shortest_success_path
-from src.simulator import build_execution_frames
-from src.synthetic_tasks import generate_synthetic_tasks
 
 
-ROOT = Path(__file__).resolve().parents[1]
-HISTORY_DIR = ROOT / "data" / "historical_tasks"
-QUERY_DIR = ROOT / "data" / "new_tasks"
+def test_dataset_split_has_no_seed_or_task_leakage() -> None:
+    train_tasks, test_tasks = generate_dataset(n_train=60, n_test=25, seed=7)
+    train_ids = {task.task_id for task in train_tasks}
+    test_ids = {task.task_id for task in test_tasks}
+    train_seeds = {task.split_seed for task in train_tasks}
+    test_seeds = {task.split_seed for task in test_tasks}
+
+    assert train_ids.isdisjoint(test_ids)
+    assert train_seeds.isdisjoint(test_seeds)
 
 
-def test_loads_all_task_graphs() -> None:
-    historical_tasks = load_tasks(HISTORY_DIR)
-    query_tasks = load_tasks(QUERY_DIR)
+def test_bfs_uses_extended_task_state() -> None:
+    train_tasks, _ = generate_dataset(n_train=200, n_test=1, seed=9)
+    task = next(task for task in train_tasks if task.required_key and task.obstacle_state == "blocked")
+    plan = expert_bfs_plan(task)
+    states = [state for state, _ in plan]
+    actions = [action for _, action in plan]
 
-    assert len(historical_tasks) == 12
-    assert len(query_tasks) == 4
-
-    for task in historical_tasks + query_tasks:
-        graph = build_task_graph(task)
-        assert graph.number_of_nodes() >= 10
-        assert graph.number_of_edges() >= 9
-        assert "start" in graph
-        assert "success" in graph
-
-
-def test_block_query_prefers_book_box_memory() -> None:
-    historical_tasks = load_tasks(HISTORY_DIR)
-    query_task = load_tasks(QUERY_DIR)[0]
-
-    rankings = rank_tasks(query_task, historical_tasks, top_k=3)
-
-    assert rankings[0]["task"]["task_id"] == "task_001"
-    assert rankings[0]["score"] > rankings[1]["score"]
-    assert rankings[0]["breakdown"]["algorithm"] == "weakly_supervised_logistic_ranker"
-    assert rankings[0]["breakdown"]["wl_kernel"] > 0
-    assert rankings[0]["breakdown"]["semantic_cosine"] > 0
-    assert rankings[0]["breakdown"]["learned_score"] > 0
+    assert "pickup_key" in actions
+    assert "open_door" in actions
+    assert "clear_obstacle" in actions
+    assert all(isinstance(state, TaskState) for state in states)
+    assert states[0].has_key is False
+    assert any(state.has_key for state in states)
+    assert any(state.door_open for state in states)
 
 
-def test_subgraph_matching_finds_reusable_structure() -> None:
-    historical_tasks = load_tasks(HISTORY_DIR)
-    query_task = load_tasks(QUERY_DIR)[0]
-    best = rank_tasks(query_task, historical_tasks, top_k=1)[0]
-
-    match = find_reusable_subgraph(best["graph"], build_task_graph(query_task))
-
-    assert match["found"]
-    assert "detect" in match["structure"]
-    assert "place" in match["structure"]
-    assert "success" in match["structure"]
-
-
-def test_shortest_path_avoids_high_cost_failure_branch() -> None:
-    task = load_tasks(HISTORY_DIR)[0]
+def test_task_graph_has_required_node_and_edge_types() -> None:
+    train_tasks, _ = generate_dataset(n_train=80, n_test=1, seed=12)
+    task = next(task for task in train_tasks if task.required_key and task.handling_action != "none")
     graph = build_task_graph(task)
+    node_types = {data["type"] for _, data in graph.nodes(data=True)}
+    edge_types = {data["type"] for _, _, data in graph.edges(data=True)}
 
-    path, cost = shortest_success_path(graph)
-
-    assert "grasp_failed" not in path
-    assert "retry_pick" not in path
-    assert cost == 11.0
-
-
-def test_simulation_places_object_at_target() -> None:
-    historical_tasks = load_tasks(HISTORY_DIR)
-    query_task = load_tasks(QUERY_DIR)[0]
-    best = rank_tasks(query_task, historical_tasks, top_k=1)[0]
-    plan = generate_plan(best["graph"], query_task)
-
-    frames = build_execution_frames(plan, query_task)
-
-    assert frames
-    assert frames[-1]["active_role"] == "success"
-    assert frames[-1]["object_pos"] == frames[-1]["target_pos"]
-    assert frames[-1]["carrying"] is False
+    assert isinstance(graph, nx.DiGraph)
+    assert {"object", "location", "action", "state", "result"}.issubset(node_types)
+    assert {"temporal", "causal", "requires", "spatial", "reachable"}.issubset(edge_types)
 
 
-def test_learned_memory_model_beats_no_memory_on_synthetic_rollouts() -> None:
-    memory_tasks = generate_synthetic_tasks(80, seed=101, prefix="memory_test")
-    train_queries = generate_synthetic_tasks(40, seed=102, prefix="train_test")
-    eval_tasks = generate_synthetic_tasks(25, seed=103, prefix="eval_test")
+def test_memory_bank_is_train_only_and_features_have_expected_size() -> None:
+    train_tasks, test_tasks = generate_dataset(n_train=50, n_test=20, seed=15)
+    bank = build_memory_bank(train_tasks)
+    train_ids = {task.task_id for task in train_tasks}
+    test_ids = {task.task_id for task in test_tasks}
 
-    memory_views = build_task_views(memory_tasks)
-    train_views = build_task_views(train_queries)
-    eval_views = build_task_views(eval_tasks)
-    x_train, y_train = sample_training_pairs(train_views, memory_views, 240, seed=104)
-    model = MemoryRetrievalModel().fit(x_train, y_train)
-    result = evaluate_memory_system(eval_views, memory_views, model, rollouts=20, seed=105)
+    assert {summary.task_id for summary in bank.summaries}.issubset(train_ids)
+    assert {summary.task_id for summary in bank.summaries}.isdisjoint(test_ids)
+    assert memory_feature_size() == 36
 
-    assert model.training_report["train_auc"] >= 0.9
-    assert result["graph_memory_success_rate"] > result["baseline_success_rate"]
+
+def test_models_train_and_memory_rollout_is_not_worse() -> None:
+    train_tasks, test_tasks = generate_dataset(n_train=180, n_test=70, seed=21)
+    trained = train_models(train_tasks, test_tasks, seed=21, top_k=10)
+    result = evaluate_rollouts(
+        trained["baseline_model"],
+        trained["memory_model"],
+        test_tasks,
+        trained["memory_bank"],
+        max_steps=16,
+        top_k=10,
+    )
+
+    assert trained["report"]["baseline_train_samples"] > 1000
+    assert trained["report"]["memory_train_samples"] == trained["report"]["baseline_train_samples"]
+    assert set(trained["baseline_model"].classes_).issubset(set(range(len(ACTION_NAMES))))
+    assert set(trained["memory_model"].classes_).issubset(set(range(len(ACTION_NAMES))))
+    assert result["memory_success_rate"] >= result["baseline_success_rate"]

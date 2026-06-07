@@ -1,119 +1,126 @@
 # 三分钟汇报稿
 
-## 1. 选题背景
+## 1. 项目背景
 
-我的课程项目叫“机器人任务记忆图：基于图结构的长期任务经验复用”。
+我们的题目是 **机器人任务记忆图：基于图结构的长期任务经验复用**。
 
-机器人在桌面收纳、厨房整理、取物放置这类任务中，经常会遇到结构相似的任务。比如“把书放进盒子”和“把积木放进收纳盒”，物体不同，但任务结构很像：检测物体、移动到物体、抓取、移动到目标位置、放置、成功。
+这个项目不做真实机器人控制，也不做物理仿真。我们关注的是高层任务规划：机器人以前做过很多整理、取放、开门、清障、放置任务，能不能把这些历史经验建成图结构记忆，并在新任务中作为机器学习模型的辅助特征。
 
-所以我没有让机器人每次都从零规划，而是把历史任务经验保存成图结构记忆。
+任务例子是：
+
+```text
+拿钥匙 -> 开门 -> 清障 -> 移动到物体 -> 抓取 -> 移动到目标 -> 放置
+```
+
+有些任务还需要特殊处理，比如易碎物体要先检查，重物要用推车，液体容器要先盖紧。
 
 ## 2. 图论建模
 
-我把一次任务执行过程建成一个有向图。
+每个任务都被建模成一张属性有向图 `G=(V,E)`。
 
 节点包括：
 
 ```text
-object, location, subtask, action, state, result
+object: book, cup, toolbox
+location: start, door, object_area, target_area
+action: pickup_key, open_door, pick_object
+state: has_key, door_open, object_in_hand
+result: success, failure
 ```
 
 边包括：
 
 ```text
-temporal, causal, spatial, reachable, object_to_subtask
+temporal: 动作先后关系
+causal: 动作导致状态变化
+requires: 某动作依赖某状态
+spatial: 物体和地点关系
+reachable: 地点可达关系
 ```
 
-例如一条成功路径是：
+这部分对应离散数学里的有向图、属性图、路径、边类型、图相似度和子图结构。
+
+## 3. Expert 标签和机器学习模型
+
+训练标签由 BFS expert solver 生成。BFS 使用包含任务条件的扩展状态：
 
 ```text
-start -> detect -> move_to_object -> pick -> in_hand -> move_to_target -> place -> success
+location
+has_key
+door_open
+obstacle_cleared
+object_checked
+cart_ready
+lid_secured
+object_in_hand
+delivered
 ```
 
-其中有向边表达先后关系和因果关系，边上的 cost 表示动作代价。普通动作代价低，失败重试、路径受阻这类边代价高。
+这样 key、door、obstacle 和 object-in-hand 都不会被遗漏。
 
-## 3. 算法实现
-
-代码里主要用了三个图论方法。
-
-第一，图相似度检索。系统不是简单数节点，而是使用规划感知 Weisfeiler-Lehman 图核。它会先找每张历史任务图中从 `start` 到 `success` 的低代价成功路径，再对这条路径及完整图结构做 WL 迭代编码，得到图结构特征向量。
-
-第二，语义向量检索。系统把任务标题、目标、物体、地点、类别和标签转成 TF-IDF 向量，用 cosine similarity 计算语义相似度。
-
-第三，弱监督学习排序。系统把历史任务两两配对，根据目标类型、物体类型、放置关系和任务类别自动生成“是否可复用”的训练标签，然后训练 logistic ranker 学习各个检索特征的权重。也就是说，最终检索权重不是手写固定的，而是从历史任务对中学习出来的。
-
-第四，子图匹配。系统用 VF2 算法判断新任务中的核心结构，是否能在历史任务图中找到。
-
-第五，最短路径。找到相似历史任务后，用 Dijkstra 从 `start` 到 `success` 提取总代价最低的成功路径。这样如果历史图里存在失败重试分支，系统会优先选择低代价路径。
-
-## 4. Demo 展示
-
-Demo 中有两部分结果。
-
-第一部分是可视化展示：12 个手写历史任务图，包括取放、归位、清理和失败恢复任务。
-
-当我输入新任务：
+我们训练两个模型，二者都是同一种模型：
 
 ```text
-Put block into storage box
+RandomForestClassifier
 ```
 
-系统检索到最相似历史任务：
+baseline 输入无记忆特征，例如当前状态、是否有 key、门是否打开、物体类别、目标类别等。
+
+memory 版本输入同样的 baseline 特征，额外加入从训练集历史任务图 memory bank 检索得到的图结构特征，包括：
 
 ```text
-task_001 Put book into storage box
+node_type_overlap
+edge_type_overlap
+object_family_match
+target_family_match
+required_key_match
+door_dependency_match
+success_path_cost_similarity
+WL graph kernel similarity
+subgraph_match_score
+historical success-path action profile
 ```
 
-它们物体不同，但目标位置和任务结构相似，所以可以复用历史任务的成功结构：
+memory 模块只输出特征，不直接替模型执行动作。
+
+## 4. 实验和防泄露
+
+数据是自动生成的 synthetic benchmark。每个任务有独立的 `task_id` 和 `split_seed`，train/test 在 seed 层面划分，保证同一个任务或同一个 seed 不会同时出现在训练和测试里。
+
+防泄露检查包括：
 
 ```text
-detect -> move_to_object -> pick -> in_hand -> move_to_target -> place -> success
+train/test task_id intersection = 0
+train/test split_seed intersection = 0
+memory bank only from train split
+shuffle memory features sanity check
+random memory bank sanity check
 ```
 
-系统最终生成规划：
+评估不只看分类准确率，还看闭环任务成功率。测试时模型一步步预测高层 action，如果预测非法动作、超时或没完成任务，就算失败。
+
+输出指标包括：
 
 ```text
-detect block
-move to block
-pick block
-move to storage box
-place block into storage box
-success
+baseline accuracy
+memory accuracy
+baseline macro F1
+memory macro F1
+baseline rollout success rate
+memory rollout success rate
+平均步数
+失败原因统计
 ```
 
-网页左侧会显示机器人在离散桌面网格中移动、抓取和放置；右侧会同步高亮任务图中当前执行到的节点和边。
+## 5. 结论
 
-需要说明的是，这里的动作不是神经网络直接学习的关节控制动作，而是高层任务动作程序。无记忆系统只能使用固定模板完成 pick-and-place；有记忆系统会先检索相似历史经验，再把历史图中的成功路径和失败恢复结构迁移到新任务中。
-
-第二部分是大规模合成实验。为了训练可学习模型，我自动生成了 3000 个历史记忆任务、1200 个训练查询任务，采样 12000 个任务对训练 logistic retrieval model。评估时使用 300 个新任务，每个任务 rollout 100 次，也就是每个系统 30000 次随机执行。
-
-结果是：
+这个项目的核心结论是：
 
 ```text
-无记忆 baseline 成功率：0.588
-学习式图记忆系统成功率：0.871
-绝对提升：0.283
-相对提升：48.0%
-Top-1 可复用检索率：1.000
+历史任务经验可以被表示成任务图；
+新任务可以通过图相似度和子图结构检索相似经验；
+这些图结构记忆特征可以接入同一种机器学习模型，
+提升高层任务规划的稳定性。
 ```
 
-模型学到的权重也符合直觉：目标类型、风险类型、恢复策略、语义相似度和 WL 图核结构相似度是最重要的特征。
-
-## 5. 成果总结
-
-这个项目的核心成果是：把机器人任务经验从普通文本或列表，转成可以检索、匹配和规划的图结构。
-
-它体现了图论知识在代码里的应用：
-
-```text
-有向图负责建模
-WL 图核和 TF-IDF cosine 负责特征表示
-弱监督排序器负责学习检索权重
-子图匹配负责结构复用
-最短路径负责任务规划
-可视化负责展示执行过程
-```
-
-最终效果是：机器人面对新任务时，可以从历史任务图中找到相似经验，并复用成功路径辅助规划。
-
-所以这个项目的结论是：在高层任务规划层面，加入图结构记忆和可学习检索模型，比没有记忆、只用固定模板的系统有更高的任务完成率。
+项目重点是把历史任务里的物体、动作、状态、依赖和成功路径表示成图，并把这些图论特征转成可学习模型的输入。

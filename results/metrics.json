@@ -1,0 +1,51 @@
+{
+  "config": {
+    "n_train": 1200,
+    "n_test": 350,
+    "seed": 42,
+    "top_k": 15,
+    "max_steps": 16
+  },
+  "classification": {
+    "model": "RandomForestClassifier",
+    "train_tasks": 1200,
+    "test_tasks": 350,
+    "baseline_train_samples": 7423,
+    "memory_train_samples": 7423,
+    "test_samples": 2196,
+    "baseline_accuracy": 0.9726775956284153,
+    "memory_accuracy": 0.9995446265938069,
+    "baseline_macro_f1": 0.9210438649498753,
+    "memory_macro_f1": 0.9985890652557319
+  },
+  "rollout": {
+    "episodes": 350,
+    "max_steps": 16,
+    "baseline_success_rate": 0.8285714285714286,
+    "memory_success_rate": 0.9971428571428571,
+    "absolute_improvement": 0.16857142857142857,
+    "baseline_avg_steps": 6.588571428571429,
+    "memory_avg_steps": 7.2628571428571425,
+    "baseline_failure_reasons": {
+      "invalid_action:inspect_object": 27,
+      "invalid_action:use_cart": 18,
+      "invalid_action:secure_lid": 15
+    },
+    "memory_failure_reasons": {
+      "invalid_action:inspect_object": 1
+    }
+  },
+  "sanity_checks": {
+    "train_test_task_id_intersection": [],
+    "train_test_seed_intersection": [],
+    "memory_bank_source_split": "train",
+    "memory_bank_task_count": 1200,
+    "memory_bank_only_train": true,
+    "shuffled_memory_accuracy": 0.9717668488160291,
+    "shuffled_memory_macro_f1": 0.9182286713968741,
+    "random_memory_bank_accuracy": 0.9339708561020036,
+    "random_memory_bank_macro_f1": 0.8065398044511051,
+    "random_memory_bank_success_rate": 0.65
+  },
+  "warnings": []
+}
